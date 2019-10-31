@@ -26,7 +26,7 @@ var scrape = new Nightmare({
     show: true,
     waitTimeout: 1000*4
 })
-.goto("https://old.reddit.com/r/news/")
+.goto("https://www.nfl.com/news/")
 .evaluate(function() {
     return document.body.innerHTML;
 }).end().then(function(html) {
@@ -35,34 +35,38 @@ var scrape = new Nightmare({
   // '$' becomes a shorthand for cheerio's selector commands, much like jQuery's '$'
   var $ = cheerio.load(html);
 
-  console.log($)
 
   // An empty array to save the data that we'll scrape
   var results = [];
 
   // With cheerio, find each p-tag with the "title" class
   // (i: iterator. element: the current element)
-  $('p.title > a').each(function(i, element) {
+  $('div.text.col.caption').each(function(i, element) {
 
     // Save the text of the element in a "title" variable
-    var title = $(element).text();
+    var title = $(element).children('h3').text();
 
     // In the currently selected element, look at its child elements (i.e., its a-tags),
     // then save the values for any "href" attributes that the child elements may have
     
-    var link = $(element).attr("href");
+    var link = $(element).find('h3 > a').attr('href');
+
+    console.log(link)
+    
+    var body = $(element).children('p').text();
 
     // https://apnews.com/
 
-    // if (!link.includes('https://apnews.com/')){
-    //   link = "https://apnews.com" + link;
-    // }
+    if (!link.includes('https://www.nfl.com/news/')){
+      link = "https://www.nfl.com/news/" + link;
+    }
 
 
     // Save these results in an object that we'll push into the results array we defined earlier
     results.push({
       title: title,
-      link: link
+      link: link,
+      body: body
     });
   });
 
