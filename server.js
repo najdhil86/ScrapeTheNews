@@ -5,23 +5,6 @@ const Nightmare = require("nightmare")
 const express = require('express')
 const app = express()
 
-
-
-// scrape = new Nightmare({
-//     show:true,
-//     waitTimeout: 1000*4
-// })
-//     // .goto("https://www.reddit.com/r/news/")
-    
-//     .evaluate(function(){
-//         return document.body.innerHTML
-//     }).end().then(function(html){
-//         let $ = cheerio.load(html)
-
-//         console.log($);
-        
-//     })
-
 var scrape = new Nightmare({
     show: true,
     waitTimeout: 1000*4
