@@ -26,7 +26,7 @@ var scrape = new Nightmare({
     show: true,
     waitTimeout: 1000*4
 })
-.goto("https://www.nfl.com/news/")
+.goto("http://www.nfl.com/news")
 .evaluate(function() {
     return document.body.innerHTML;
 }).end().then(function(html) {
