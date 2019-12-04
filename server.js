@@ -1,69 +1,107 @@
-const cheerio = require("cheerio")
-const Nightmare = require("nightmare")
+const cheerio = require("cheerio");
+const Nightmare = require("nightmare");
 
+const express = require("express");
+const app = express();
 
-const express = require('express')
-const app = express()
+const mongojs = require("mongojs");
 
-var scrape = new Nightmare({
-    show: true,
-    waitTimeout: 1000*4
-})
-.goto("https://old.reddit.com/r/news/")
-.evaluate(function() {
-    return document.body.innerHTML;
-}).end().then(function(html) {
+//do we need this?
+app.set("view-engine", "ejs");
+
+const databaseURL = "scraper_db";
+const collections = ["scapedData"];
+
+var database = mongojs(databaseURL, collections);
+database.on("error", function(error) {
+  console.log("DB Error:", error);
+});
+
+app.get("/", function(request, results) {
+  results.sendFile(path.join(__dirname, "index.html"));
+  results.send("what up");
+});
+
+app.get("/scrape", function(req, res) {
+
+  database.scrapedData.remove();
   
-  // Load the Response into cheerio and save it to a variable
-  // '$' becomes a shorthand for cheerio's selector commands, much like jQuery's '$'
-  var $ = cheerio.load(html);
+  var scrape = new Nightmare({
+    show: true,
+    waitTimeout: 1000 * 4
+  })
+    .goto("http://www.nfl.com/news")
+    .evaluate(function() {
+      return document.body.innerHTML;
+    })
+    .end()
+    .then(function(html) {
+      // Load the Response into cheerio and save it to a variable
+      // '$' becomes a shorthand for cheerio's selector commands, much like jQuery's '$'
+      var $ = cheerio.load(html);
 
-  console.log($)
+      // An empty array to save the data that we'll scrape
+      var results = [];
 
-  // An empty array to save the data that we'll scrape
-  var results = [];
+      // With cheerio, find each p-tag with the "title" class
+      // (i: iterator. element: the current element)
+      $("div.text.col.caption").each(function(i, element) {
+        // Save the text of the element in a "title" variable
+        var title = $(element)
+          .children("h3")
+          .text();
 
-  // With cheerio, find each p-tag with the "title" class
-  // (i: iterator. element: the current element)
-  $('p.title > a').each(function(i, element) {
+        // In the currently selected element, look at its child elements (i.e., its a-tags),
+        // then save the values for any "href" attributes that the child elements may have
 
-    // Save the text of the element in a "title" variable
-    var title = $(element).text();
+        var link = $(element)
+          .find("h3 > a")
+          .attr("href");
 
-    // In the currently selected element, look at its child elements (i.e., its a-tags),
-    // then save the values for any "href" attributes that the child elements may have
-    
-    var link = $(element).attr("href");
+        console.log(link);
 
-    // https://apnews.com/
+        var body = $(element)
+          .children("p")
+          .text();
 
-    // if (!link.includes('https://apnews.com/')){
-    //   link = "https://apnews.com" + link;
-    // }
+        // https://apnews.com/
 
+        if (!link.includes("https://www.nfl.com/news/")) {
+          link = "https://www.nfl.com/news/" + link;
+        }
 
-    // Save these results in an object that we'll push into the results array we defined earlier
-    results.push({
-      title: title,
-      link: link
+        // Save these results in an object that we'll push into the results array we defined earlier
+
+        if (title && link && body) {
+          database.scapedData.insert({
+            title: title,
+            link: link,
+            body: body
+          });
+        }
+
+        results.push({
+          title: title,
+          link: link,
+          body: body
+        });
+      });
+
+      // $('div.content > p').each(function(i, element) {
+
+      //   let body = $(element).text()
+
+      //   // Save these results in an object that we'll push into the results array we defined earlier
+      //   results.push({
+      //     body:body
+      //   });
+      // });
+
+      // Log the results once you've looped through each of the elements found with cheerio
+      console.log(results);
     });
-  });
+});
 
-  // $('div.content > p').each(function(i, element) {
-
-
-  //   let body = $(element).text()
-
-  //   // Save these results in an object that we'll push into the results array we defined earlier
-  //   results.push({
-  //     body:body
-  //   });
-  // });
-
-
-
-  // Log the results once you've looped through each of the elements found with cheerio
-  console.log(results);
-
-
+app.listen(3000, function() {
+  console.log("App running!");
 });
