@@ -1,107 +1,107 @@
-const cheerio = require("cheerio");
-const Nightmare = require("nightmare");
+// Dependencies
+var express = require("express");
+var mongojs = require("mongojs");
+// Require axios and cheerio. This makes the scraping possible
+var axios = require("axios");
+var cheerio = require("cheerio");
+var path = require("path");
 
-const express = require("express");
-const app = express();
+// Initialize Express
+var app = express();
 
-const mongojs = require("mongojs");
+app.set("view engine", "ejs");
 
-//do we need this?
-app.set("view-engine", "ejs");
+// Database configuration
+var databaseUrl = "scraper_db";
+var collections = ["scrapedData"];
 
-const databaseURL = "scraper_db";
-const collections = ["scapedData"];
-
-var database = mongojs(databaseURL, collections);
-database.on("error", function(error) {
-  console.log("DB Error:", error);
+// Hook mongojs configuration to the db variable
+var db = mongojs(databaseUrl, collections);
+db.on("error", function(error) {
+  console.log("Database Error:", error);
 });
 
-app.get("/", function(request, results) {
-  results.sendFile(path.join(__dirname, "index.html"));
-  results.send("what up");
+// Main route (simple Hello World Message)
+app.get("/", function(req, res) {
+  res.sendFile(path.join(__dirname, "index.html"));
+  // res.send("Hello world");
 });
 
+// Retrieve data from the db
+app.get("/all", function(req, res) {
+  // Find all results from the scrapedData collection in the db
+  db.scrapedData.find({}, function(error, found) {
+    // Throw any errors to the console
+    if (error) {
+      console.log(error);
+    }
+    // If there are no errors, send the data to the browser as json
+    else {
+      res.json(found);
+    }
+  });
+});
+
+// Scrape data from one site and place it into the mongodb db
 app.get("/scrape", function(req, res) {
+  //Delete the colection scrapedData
+  db.scrapedData.remove();
+  // Make a request via axios for the news section of `ycombinator`
+  axios.get("https://news.ycombinator.com/").then(function(response) {
+    console.log(response.data);
+    console.log("====================================");
+    // Load the html body from axios into cheerio
+    var $ = cheerio.load(response.data);
+    // For each element with a "title" class
+    $(".title").each(function(i, element) {
+      // Save the text and href of each link enclosed in the current element
+      console.log("---------------------------");
+      console.log($(element).html());
 
-  database.scrapedData.remove();
-  
-  var scrape = new Nightmare({
-    show: true,
-    waitTimeout: 1000 * 4
-  })
-    .goto("http://www.nfl.com/news")
-    .evaluate(function() {
-      return document.body.innerHTML;
-    })
-    .end()
-    .then(function(html) {
-      // Load the Response into cheerio and save it to a variable
-      // '$' becomes a shorthand for cheerio's selector commands, much like jQuery's '$'
-      var $ = cheerio.load(html);
-
-      // An empty array to save the data that we'll scrape
-      var results = [];
-
-      // With cheerio, find each p-tag with the "title" class
-      // (i: iterator. element: the current element)
-      $("div.text.col.caption").each(function(i, element) {
-        // Save the text of the element in a "title" variable
-        var title = $(element)
-          .children("h3")
-          .text();
-
-        // In the currently selected element, look at its child elements (i.e., its a-tags),
-        // then save the values for any "href" attributes that the child elements may have
-
-        var link = $(element)
-          .find("h3 > a")
-          .attr("href");
-
-        console.log(link);
-
-        var body = $(element)
-          .children("p")
-          .text();
-
-        // https://apnews.com/
-
-        if (!link.includes("https://www.nfl.com/news/")) {
-          link = "https://www.nfl.com/news/" + link;
-        }
-
-        // Save these results in an object that we'll push into the results array we defined earlier
-
-        if (title && link && body) {
-          database.scapedData.insert({
+      var title = $(element)
+        .children("a")
+        .text();
+      var link = $(element)
+        .children("a")
+        .attr("href");
+      var today = new Date();
+      var date =
+        today.getFullYear() +
+        "-" +
+        (today.getMonth() + 1) +
+        "-" +
+        today.getDate();
+      var time =
+        today.getHours() + ":" + today.getMinutes() + ":" + today.getSeconds();
+      var dateTime = date + " " + time;
+      // If this found element had both a title and a link
+      if (title && link) {
+        // Insert the data in the scrapedData db
+        db.scrapedData.insert(
+          {
             title: title,
             link: link,
-            body: body
-          });
-        }
-
-        results.push({
-          title: title,
-          link: link,
-          body: body
-        });
-      });
-
-      // $('div.content > p').each(function(i, element) {
-
-      //   let body = $(element).text()
-
-      //   // Save these results in an object that we'll push into the results array we defined earlier
-      //   results.push({
-      //     body:body
-      //   });
-      // });
-
-      // Log the results once you've looped through each of the elements found with cheerio
-      console.log(results);
+            time: Date()
+          },
+          function(err, inserted) {
+            if (err) {
+              // Log the error if one is encountered during the query
+              console.log(err);
+            } else {
+              // Otherwise, log the inserted data
+              console.log(inserted);
+            }
+          }
+        );
+      }
     });
+  });
+
+  // Send a "Scrape Complete" message to the browser
+  res.send("Scrape Complete");
 });
 
+// Listen on port 3000
 app.listen(3000, function() {
-  console.log("App running!");
+  console.log("App running on port 3000!");
 });

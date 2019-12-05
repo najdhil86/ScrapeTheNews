@@ -1,45 +1,25 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
-    <link
-      rel="stylesheet"
-      href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
-      integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T"
-      crossorigin="anonymous"
-    />
-
-    <title>NFL News Scraper</title>
-  </head>
-  <body>
-    <div class="jumbotron jumbotron-fluid">
-      <div class="container">
-        <h1 class="display-3">NFL News Scraper</h1>
-        <p class="lead">
-          Click Scrape button to get the latest NFL News!
-        </p>
-        <p class="lead">
-          <a id="getScrape" class="btn btn-primary btn-lg" href="/" role="button"
-            >Scrape</a>
-        </p>
-      </div>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Scraper</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+</head>
+<body>
+    <div class="jumbotron">
+        <h1 class="display-4">Data Scrapper</h1>
+        <p class="lead">This app scrapes data from haker news and shows results</p>
+        <hr class="my-4">
+        <p>Click button bellow to scrape news.</p>
+        <button id= "showData" type="button" class="btn btn-primary">Show news</button>
+        <button id= "getData" type="button" class="btn btn-success">Scrape & Show</button>
     </div>
-
-    <div class="results">
+    <div id="results">
 
     </div>
-
-	<footer>
-		<div class="container">
-			<a href="/friends.json">Github Repo</a>
-		</div>
-		  </footer>
-      </div>
-    </div>
-
-        <script
+    <script
         src="https://code.jquery.com/jquery-3.4.1.min.js"
         integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo="
         crossorigin="anonymous">
@@ -48,25 +28,86 @@
      <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/moment@2.24.0/moment.min.js"></script>
-
     <script>
 
-        $('#getScrape').on('click', function(){
-            getResults()
+       
+
+        $('#showData').on('click', function() {
+            displayAjaxCall()
         })
 
-        async function getResults(){
+        $('#getData').on('click', function() {
+            scrapeAjaxCall()
+            displayAjaxCall()
+        })
+
+        async function scrapeAjaxCall(){
             $.ajax({
-                url:'/',
-                method:'GET'
-            }).then(function(results){
-                console.log(results)
+            url: '/scrape',
+            method: 'GET'
+            }).then(function(res)  {
+                console.log(res)
             })
         }
 
+        async function displayAjaxCall(){
+            console.log('something')
+            $.ajax({
+            url: '/all',
+            method: 'GET'
+            }).then(function(res) {
+                displayData(res)
+            })
+        }
+
+        function displayData(res){
+            $('#results').empty()
+            var count = Object.keys(res).length
+            console.log(`count = ${count}`)
+            for(var i =0; i < count-1; i++){
+                var JSONString = JSON.stringify(res[i].title)
+                var noDblQuote = JSONString.replace(/"/g, "")
+                var links = JSON.stringify(res[i].link)
+                var nolinksDblQuote = links.replace(/"/g, "")
+                var newsDate = (JSON.stringify(res[i].time)).replace(/"/g, "")
+                var sinceDate = moment(newsDate).fromNow()
+                var ulTag = $('<ul>').text(sinceDate)
+                var aTag = $('<a>').text(noDblQuote).attr('href',nolinksDblQuote)
+                ulTag.append(aTag)
+                $('#results').append(ulTag)
+            }
+            
+        }
+
+        
 
 
+        function timeSince(date) {
+            var seconds = Math.floor((new Date() - date) / 1000);
+            var interval = Math.floor(seconds / 31536000);
+            if (interval > 1) {
+                return interval + " years";
+            }
+            interval = Math.floor(seconds / 2592000);
+            if (interval > 1) {
+                return interval + " months";
+            }
+            interval = Math.floor(seconds / 86400);
+            if (interval > 1) {
+                return interval + " days";
+            }
+            interval = Math.floor(seconds / 3600);
+            if (interval > 1) {
+                return interval + " hours";
+            }
+            interval = Math.floor(seconds / 60);
+            if (interval > 1) {
+                return interval + " minutes";
+            }
+            return Math.floor(seconds) + " seconds";
+        }
+
+    
     </script>
-
-  </body>
+</body>
 </html>
